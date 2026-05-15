@@ -968,7 +968,7 @@ namespace C3DDeepSeek
 
         /// <summary>
         /// COMANDO: DSSECTIONS
-        /// Gera seções transversais a partir de Sample Lines com suporte a DWT
+        /// Gera seções transversais com presets customizáveis (ROAD, URBAN, EARTHWORK...)
         /// </summary>
         [CommandMethod("DSSECTIONS", CommandFlags.Modal)]
         public void GenerateSections()
@@ -978,41 +978,89 @@ namespace C3DDeepSeek
             var ed = doc.Editor;
 
             ed.WriteMessage("\n📐 DSSECTIONS — Gerador de Seções Transversais");
-            ed.WriteMessage("\n═══════════════════════════════════════");
+            ed.WriteMessage($"\n{SectionGenerator.ListPresets()}");
 
             var config = new SectionGenerator.SectionConfig();
 
-            var alignResult = ed.GetString("\nNome do ALINHAMENTO: ");
-            if (alignResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
-            config.AlignmentName = alignResult.StringResult.Trim();
+            // Preset
+            var presetResult = ed.GetString("\nPreset [ROAD/ROAD_DETAIL/URBAN/EARTHWORK/OVERVIEW/CUSTOM]: ");
+            if (presetResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
 
-            var hScaleResult = ed.GetString("\nEscala HORIZONTAL [500]: ");
-            if (hScaleResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
-                double.TryParse(hScaleResult.StringResult.Replace(".", ","), out double hs))
-                config.HorizontalScale = hs;
+            string presetChoice = presetResult.StringResult.Trim().ToUpper();
+            var presets = SectionGenerator.GetPresets();
 
-            var vScaleResult = ed.GetString("\nEscala VERTICAL [500]: ");
-            if (vScaleResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
-                double.TryParse(vScaleResult.StringResult.Replace(".", ","), out double vs))
-                config.VerticalScale = vs;
+            if (presets.ContainsKey(presetChoice))
+            {
+                config = presets[presetChoice];
+                ed.WriteMessage($"\n✅ Preset '{presetChoice}' carregado.");
+            }
+            else
+            {
+                // CUSTOM — pergunta cada parâmetro
+                var alignResult = ed.GetString("\nNome do ALINHAMENTO: ");
+                if (alignResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+                config.AlignmentName = alignResult.StringResult.Trim();
 
-            var fmtResult = ed.GetString("\nFormato [A0/A1/A2/A3/A4]: ");
-            if (fmtResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
-                !string.IsNullOrWhiteSpace(fmtResult.StringResult))
-                config.Format = fmtResult.StringResult.Trim().ToUpper();
+                var hScaleResult = ed.GetString("\nEscala HORIZONTAL [500]: ");
+                if (hScaleResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    double.TryParse(hScaleResult.StringResult.Replace(".", ","), out double hs);
+                // preserva o default do config
 
-            var dwtResult = ed.GetString("\nCaminho do DWT (ou ENTER para padrão): ");
-            if (dwtResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
-                config.TemplatePath = dwtResult.StringResult.Trim();
+                var vScaleResult = ed.GetString("\nEscala VERTICAL [500]: ");
+                if (vScaleResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    double.TryParse(vScaleResult.StringResult.Replace(".", ","), out double dummy);
 
-            var volumesResult = ed.GetString("\nIncluir tabela de volumes corte/aterro? [S/N]: ");
-            config.IncludeVolumeTable = volumesResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK ||
-                                        volumesResult.StringResult.Trim().ToUpper() != "N";
+                var fmtResult = ed.GetString("\nFormato [A0/A1/A2/A3/A4]: ");
+                if (fmtResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    config.Format = fmtResult.StringResult.Trim().ToUpper();
+
+                var dwtResult = ed.GetString("\nCaminho do DWT (ou ENTER para padrão): ");
+                if (dwtResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    config.TemplatePath = dwtResult.StringResult.Trim();
+            }
+
+            // Sempre pergunta alinhamento e DWT (podem sobrescrever o preset)
+            var alignResult2 = ed.GetString($"\nAlinhamento {(string.IsNullOrWhiteSpace(config.AlignmentName) ? "" : $"[{config.AlignmentName}]")}: ");
+            if (alignResult2.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                !string.IsNullOrWhiteSpace(alignResult2.StringResult))
+                config.AlignmentName = alignResult2.StringResult.Trim();
+
+            if (string.IsNullOrWhiteSpace(config.AlignmentName))
+            {
+                ed.WriteMessage("\n⚠️ Nome do alinhamento é obrigatório.");
+                return;
+            }
+
+            var dwtResult2 = ed.GetString($"\nDWT {(string.IsNullOrWhiteSpace(config.TemplatePath) ? "(padrão)" : $"[{config.TemplatePath}]")}: ");
+            if (dwtResult2.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                !string.IsNullOrWhiteSpace(dwtResult2.StringResult))
+                config.TemplatePath = dwtResult2.StringResult.Trim();
+
+            // Confirma
+            ed.WriteMessage($"\n📋 CONFIGURAÇÃO:");
+            ed.WriteMessage($"\n   Alinhamento: {config.AlignmentName}");
+            ed.WriteMessage($"\n   Escala: H=1:{config.HorizontalScale} V=1:{config.VerticalScale}");
+            ed.WriteMessage($"\n   Formato: {config.Format} | {config.SectionsPerColumn}×{config.ColumnsPerSheet}");
+            ed.WriteMessage($"\n   Sample Lines: {config.SampleInterval}m");
+            ed.WriteMessage($"\n   Offsets: -{config.LeftOffset}/+{config.RightOffset}m");
+            ed.WriteMessage($"\n   Volumes: {(config.IncludeVolumeTable ? "Sim" : "Não")}");
+            ed.WriteMessage($"\n   Grid: {(config.IncludeGrid ? "Sim" : "Não")}");
+
+            var confirm = ed.GetString("\nGerar seções? [S/N]: ");
+            if (confirm.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK ||
+                confirm.StringResult.Trim().ToUpper() != "S")
+            {
+                ed.WriteMessage("\n⚠️ Cancelado.");
+                return;
+            }
 
             ed.WriteMessage("\n⏳ Gerando seções...");
             var output = SectionGenerator.GenerateFromSampleLines(config);
             ed.WriteMessage($"\n{output}");
         }
+
+        /// <summary>
+        /// COMANDO: DSDRAINAGE
 
         /// <summary>
         /// COMANDO: DSDRAINAGE
