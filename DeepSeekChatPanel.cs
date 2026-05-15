@@ -26,7 +26,10 @@ namespace C3DDeepSeek
         private Button _sendButton;
         private Button _execButton;
         private Button _attachButton;
+        private Button _commandsButton;
         private TextBlock _attachStatus;
+        private Grid _commandsPanel;
+        private bool _commandsVisible;
 
         // Lista de arquivos anexados na conversa atual
         private readonly List<AttachedFile> _attachedFiles = new List<AttachedFile>();
@@ -83,6 +86,20 @@ namespace C3DDeepSeek
             };
             _attachButton.Click += OnAttachClick;
 
+            _commandsButton = new Button
+            {
+                Content = "🧭 Comandos",
+                Background = new SolidColorBrush(Color.FromRgb(80, 80, 140)),
+                Foreground = new SolidColorBrush(Color.FromRgb(210, 210, 250)),
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(10, 4, 10, 4),
+                FontSize = 11,
+                Cursor = Cursors.Hand,
+                ToolTip = "Mostrar/ocultar lista de comandos disponíveis",
+                Margin = new Thickness(2, 2, 0, 2)
+            };
+            _commandsButton.Click += OnCommandsClick;
+
             _attachStatus = new TextBlock
             {
                 Text = "",
@@ -94,8 +111,15 @@ namespace C3DDeepSeek
             };
 
             toolbar.Children.Add(_attachButton);
+            toolbar.Children.Add(_commandsButton);
             toolbar.Children.Add(_attachStatus);
             Grid.SetRow(toolbar, 0);
+
+            // ═══ Painel de Comandos (flutuante sobre o chat) ═══
+            _commandsPanel = CreateCommandsPanel();
+            _commandsPanel.Visibility = Visibility.Collapsed;
+            Grid.SetRow(_commandsPanel, 1);
+            Panel.SetZIndex(_commandsPanel, 100);
 
             // ═══ Row 1: Historico do chat ═══
             _chatHistory = new RichTextBox
@@ -185,11 +209,151 @@ namespace C3DDeepSeek
             Grid.SetRow(_execButton, 4);
 
             mainGrid.Children.Add(toolbar);
+            mainGrid.Children.Add(_chatHistory);
+            mainGrid.Children.Add(_commandsPanel);
             mainGrid.Children.Add(_statusText);
             mainGrid.Children.Add(inputGrid);
             mainGrid.Children.Add(_execButton);
 
             Content = mainGrid;
+        }
+
+        private Grid CreateCommandsPanel()
+        {
+            var panel = new Grid
+            {
+                Background = new SolidColorBrush(Color.FromArgb(245, 30, 30, 45)),
+                Margin = new Thickness(4)
+            };
+
+            // Barra de título
+            var titleBar = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Background = new SolidColorBrush(Color.FromRgb(60, 60, 120)),
+                Margin = new Thickness(0)
+            };
+
+            var titleText = new TextBlock
+            {
+                Text = "🧭 COMANDOS DISPONÍVEIS (28)",
+                Foreground = new SolidColorBrush(Color.FromRgb(220, 220, 255)),
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                Padding = new Thickness(8, 4, 8, 4),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var closeBtn = new Button
+            {
+                Content = "✕",
+                Background = Brushes.Transparent,
+                Foreground = new SolidColorBrush(Color.FromRgb(200, 200, 220)),
+                BorderThickness = new Thickness(0),
+                FontSize = 14,
+                Width = 28, Height = 28,
+                Cursor = Cursors.Hand,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            closeBtn.Click += (s, e) => { _commandsPanel.Visibility = Visibility.Collapsed; _commandsVisible = false; };
+
+            titleBar.Children.Add(titleText);
+            titleBar.Children.Add(closeBtn);
+            panel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            panel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            Grid.SetRow(titleBar, 0);
+            panel.Children.Add(titleBar);
+
+            // Lista de comandos
+            var scroll = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Margin = new Thickness(0)
+            };
+
+            var cmdList = new TextBlock
+            {
+                Text = GetCommandList(),
+                Foreground = new SolidColorBrush(Color.FromRgb(200, 210, 225)),
+                Background = new SolidColorBrush(Color.FromRgb(35, 35, 48)),
+                FontFamily = new FontFamily("Consolas, Segoe UI"),
+                FontSize = 11,
+                Padding = new Thickness(8),
+                TextWrapping = TextWrapping.NoWrap
+            };
+
+            scroll.Content = cmdList;
+            Grid.SetRow(scroll, 1);
+            panel.Children.Add(scroll);
+
+            return panel;
+        }
+
+        private void OnCommandsClick(object sender, RoutedEventArgs e)
+        {
+            _commandsVisible = !_commandsVisible;
+            _commandsPanel.Visibility = _commandsVisible ? Visibility.Visible : Visibility.Collapsed;
+
+            if (_commandsVisible)
+                _statusText.Text = "🧭 Lista de comandos aberta — clique ✕ para fechar.";
+        }
+
+        private static string GetCommandList()
+        {
+            return
+@"╔══════════════════════════════════════════════════════════╗
+║           🧭 C3D DeepSeek — 28 COMANDOS               ║
+╠══════════════════════════════════════════════════════════╣
+║                                                        ║
+║  💬 IA / CHAT                                         ║
+║   DEEPSEEK     Abre painel de chat lateral            ║
+║   DSASK        Pergunta rápida na linha de comando    ║
+║   CONFIGDS     Configura chave API DeepSeek           ║
+║                                                        ║
+║  🔍 ANÁLISE                                           ║
+║   DSANALYZE    Análise inteligente do projeto         ║
+║   DSCHECK      Análise crítica (qualidade/BIM)        ║
+║   DSCOMPARE    Compara 2+ projetos abertos            ║
+║   DSCLASH      Detecta interferências                 ║
+║                                                        ║
+║  📊 RELATÓRIOS / EXPORTAÇÃO                           ║
+║   DSREPORT     Relatórios (9 tipos)                   ║
+║   DSEXPORT     Exporta relatório Excel (.xlsx)        ║
+║   DSBIM        Dashboard BIM com progresso            ║
+║                                                        ║
+║  🏗️ MODELAGEM / PROJETO                               ║
+║   DSMODEL      Modelagem por linguagem natural        ║
+║   DSWORKFLOW   Fluxos guiados (7 tipos)               ║
+║   DSDESIGN     Verificação normas DNIT/AASHTO         ║
+║   DSTEMPLATE   Novo projeto por template (5)          ║
+║                                                        ║
+║  🛤️ TERRAPLENAGEM                                     ║
+║   DSEARTH      Análise corte/aterro                   ║
+║   DSBRUCKNER   Diagrama de Brückner (mass haul)       ║
+║   DSOPTIMIZE   Otimizador de superfície p/ drone      ║
+║                                                        ║
+║  📐 DESENHO / FOLHAS                                  ║
+║   DSSHEETS     Folhas A0-A4 + DWT                    ║
+║   DSSECTIONS   Seções transversais (5 presets)        ║
+║   DSDIM        Labels e cotagem inteligente           ║
+║   DSASSEMBLY   Subassemblies para corredores          ║
+║                                                        ║
+║  🧮 CÁLCULOS                                          ║
+║   DSCALC       24 cálculos (hidráulica, pav, etc)     ║
+║   DSTRANSFORM  UTM↔Topográfico, Lat/Lon→UTM          ║
+║                                                        ║
+║  🌊 INFRAESTRUTURA                                    ║
+║   DSDRAINAGE   Drenagem inteligente + bacias          ║
+║   DSIMPORT     Importa CSV/LandXML/SHP/KML/IFC        ║
+║                                                        ║
+║  📍 PONTOS / CONEXÃO                                  ║
+║   DSGOOGLEMAPS Google Maps/Earth → COGO points        ║
+║   DSCONNECT    Auto-conexão inteligente de pontos     ║
+║                                                        ║
+║  💻 DESENVOLVIMENTO                                   ║
+║   DSCODE       Gera código LISP/.NET                  ║
+║                                                        ║
+╚══════════════════════════════════════════════════════════╝";
         }
 
         private void OnAttachClick(object sender, RoutedEventArgs e)
