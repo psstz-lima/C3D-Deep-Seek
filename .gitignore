@@ -1,0 +1,22 @@
+# .NET build artifacts
+bin/
+obj/
+
+# NuGet
+*.nupkg
+
+# User-specific
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Environment (API keys)
+.env
+
+# OS
+Thumbs.db
+Desktop.ini

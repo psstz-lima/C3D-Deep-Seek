@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage
+  SchemaVersion="1.0"
+  AppVersion="1.0.0"
+  Author="C3D DeepSeek"
+  Name="C3DDeepSeekAI"
+  Description="Assistente IA DeepSeek para AutoCAD/Civil 3D 2026"
+  HelpFile="./Contents/README.txt">
+  <CompanyDetails
+    Name="C3D DeepSeek"
+    Url="https://deepseek.com" />
+  <Components>
+    <RuntimeRequirements
+      OS="Win64"
+      Platform="AutoCAD"
+      SeriesMin="R25.1"
+      SeriesMax="R25.1" />
+    <ComponentEntry
+      AppName="C3DDeepSeek"
+      AppDescription="DeepSeek AI Chat para Civil 3D"
+      ModuleName="./Contents/C3DDeepSeek.dll"
+      LoadOnAutoCADStartup="True"
+      LoadOnCommandInvocation="False">
+      <Commands GroupName="DeepSeekAI">
+        <Command Global="DEEPSEEK" Local="DEEPSEEK" />
+        <Command Global="DSASK" Local="DSASK" />
+        <Command Global="CONFIGDS" Local="CONFIGDS" />
+      </Commands>
+    </ComponentEntry>
+  </Components>
+</ApplicationPackage>
