@@ -78,13 +78,18 @@ function Invoke-DeepSeek {
         max_tokens = 800
     } | ConvertTo-Json -Depth 5
 
+    # Corrige encoding Unicode: PowerShell 5.1 corrompe caracteres acentuados
+    # Converte para UTF-8 bytes explicitamente
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    $bodyBytes = $utf8NoBom.GetBytes($body)
+
     $headers = @{
         Authorization = "Bearer $apiKey"
         Accept = "application/json"
     }
 
     $response = Invoke-RestMethod -Uri "https://api.deepseek.com/v1/chat/completions" `
-        -Method Post -Headers $headers -ContentType "application/json" -Body $body
+        -Method Post -Headers $headers -ContentType "application/json; charset=utf-8" -Body $bodyBytes
     
     return $response.choices[0].message.content.Trim()
 }
