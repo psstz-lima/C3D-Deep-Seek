@@ -53,6 +53,27 @@ namespace C3DDeepSeek
         private static PaletteSet _paletteSet;
 
         /// <summary>
+        /// Executa um comando no Civil 3D usando COM SendCommand (confiável, igual ao PowerShell)
+        /// </summary>
+        public static void ExecuteInAutoCAD(string command)
+        {
+            if (string.IsNullOrWhiteSpace(command)) return;
+
+            try
+            {
+                // Método COM: mesmo que o PowerShell usa, comprovadamente funciona
+                dynamic acadApp = AcAp.Application.AcadApplication;
+                acadApp.ActiveDocument.SendCommand(command + "\n");
+            }
+            catch
+            {
+                // Fallback: SendStringToExecute (menos confiável mas não depende de COM)
+                var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+                doc?.SendStringToExecute(command + "\n", true, false, true);
+            }
+        }
+
+        /// <summary>
         /// COMANDO: DEEPSEEK
         /// Abre o painel de chat com DeepSeek
         /// </summary>
@@ -140,7 +161,7 @@ namespace C3DDeepSeek
         /// Uso: DSASK Sua pergunta aqui
         /// </summary>
         [CommandMethod("DSASK", CommandFlags.Modal)]
-        public async void AskDeepSeekCommandLine()
+        public void AskDeepSeekCommandLine()
         {
             var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
@@ -164,7 +185,8 @@ namespace C3DDeepSeek
             ed.WriteMessage("\n[C3D DeepSeek] Aguardando resposta...");
 
             var client = new DeepSeekClient(apiKey);
-            var response = await client.AskAsync(question);
+            // Síncrono: evita async void que quebra o contexto do comando AutoCAD
+            var response = System.Threading.Tasks.Task.Run(() => client.AskAsync(question)).Result;
 
             if (response.Success)
             {
@@ -177,7 +199,7 @@ namespace C3DDeepSeek
                     if (execResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
                         execResult.StringResult.Trim().ToUpper() == "S")
                     {
-                        doc.SendStringToExecute(response.Command + "\n", true, false, false);
+                        ExecuteInAutoCAD(response.Command);
                     }
                 }
             }

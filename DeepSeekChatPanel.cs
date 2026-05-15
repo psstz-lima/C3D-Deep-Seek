@@ -212,15 +212,26 @@ namespace C3DDeepSeek
             var command = button?.Tag as string;
             if (string.IsNullOrWhiteSpace(command)) return;
 
-            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
-            if (doc != null)
+            try
             {
-                doc.SendStringToExecute(command + "\n", true, false, false);
+                // Usa COM SendCommand — mesmo método que o PowerShell, comprovadamente funciona
+                dynamic acadApp = AcAp.Application.AcadApplication;
+                acadApp.ActiveDocument.SendCommand(command + "\n");
                 _statusText.Text = $"Comando executado: {command}";
             }
-            else
+            catch
             {
-                _statusText.Text = "Nenhum documento ativo.";
+                // Fallback: SendStringToExecute
+                var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+                if (doc != null)
+                {
+                    doc.SendStringToExecute(command + "\n", true, false, true);
+                    _statusText.Text = $"Comando enviado: {command}";
+                }
+                else
+                {
+                    _statusText.Text = "Nenhum documento ativo.";
+                }
             }
         }
 

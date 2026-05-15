@@ -63,17 +63,8 @@ echo ^</ApplicationPackage^>
 
 echo.
 echo [4/4] Atualizando registro do AutoCAD para carregar do OneDrive...
-powershell -ExecutionPolicy Bypass -Command ^
-  "$dll='%USERPROFILE%\OneDrive - ATERPA\00. PERSONALIZADOS\AUTODESK\PERSONALIZADOS\DEEPSEEK\C3DDeepSeek.bundle\Contents\C3DDeepSeek.dll'; ^
-   $codes=@('ACAD-9100:409','ACAD-9101:409','ACAD-9102:409','ACAD-9104:409'); ^
-   foreach($c in $codes){ ^
-     $p='HKCU:\SOFTWARE\Autodesk\AutoCAD\R25.1\'+$c+'\Applications\C3DDeepSeek'; ^
-     New-Item -Path $p -Force ^| Out-Null; ^
-     Set-ItemProperty -Path $p -Name 'DESCRIPTION' -Value 'C3D DeepSeek AI' -Type String; ^
-     Set-ItemProperty -Path $p -Name 'LOADCTRLS' -Value 2 -Type DWord; ^
-     Set-ItemProperty -Path $p -Name 'LOADER' -Value $dll -Type String; ^
-     Set-ItemProperty -Path $p -Name 'MANAGED' -Value 1 -Type DWord; ^
-   }"
+set "PS_CMD=$dll='%TARGET%\C3DDeepSeek.dll'; $codes=@('ACAD-9100:409','ACAD-9101:409','ACAD-9102:409','ACAD-9104:409'); foreach($c in $codes){ $p='HKCU:\SOFTWARE\Autodesk\AutoCAD\R25.1\'+$c+'\Applications\C3DDeepSeek'; New-Item -Path $p -Force | Out-Null; Set-ItemProperty -Path $p -Name 'DESCRIPTION' -Value 'C3D DeepSeek AI' -Type String; Set-ItemProperty -Path $p -Name 'LOADCTRLS' -Value 2 -Type DWord; Set-ItemProperty -Path $p -Name 'LOADER' -Value $dll -Type String; Set-ItemProperty -Path $p -Name 'MANAGED' -Value 1 -Type DWord; }"
+powershell -ExecutionPolicy Bypass -Command "%PS_CMD%"
 
 echo.
 echo Deploy concluido!
