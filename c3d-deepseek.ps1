@@ -105,6 +105,64 @@ function Extract-Command {
     return @{Command = ""; Text = $response}
 }
 
+# ---------- FUNCAO: Coletar contexto do desenho ----------
+function Get-C3DContext {
+    $ctx = @()
+    $ctx += "Desenho: $($doc.Name)"
+
+    # Layers
+    try {
+        $layers = @($doc.Layers | ForEach-Object { $_.Name })
+        $ctx += "Layers ($($layers.Count)): $($layers -join ', ')"
+    } catch { }
+
+    # Entidades basicas
+    try {
+        $ms = $doc.ModelSpace
+        $lines = 0; $plines = 0; $circles = 0; $texts = 0; $mtexts = 0; $blocks = 0
+        foreach ($e in $ms) {
+            switch ($e.EntityName) {
+                "AcDbLine" { $lines++ }
+                "AcDbPolyline" { $plines++ }
+                "AcDbCircle" { $circles++ }
+                "AcDbText" { $texts++ }
+                "AcDbMText" { $mtexts++ }
+                "AcDbBlockReference" { $blocks++ }
+            }
+        }
+        $ctx += "Entidades: $lines linhas, $plines polilinhas, $circles circulos, $texts textos, $mtexts MTexts, $blocks blocos"
+    } catch { }
+
+    # Civil 3D objects via COM
+    try {
+        $civil = $c3d.GetInterfaceObject("AeccXUiLand.AeccApplication.14.0")
+        $cDoc = $civil.ActiveDocument
+
+        # Alignments
+        try { $a = $cDoc.Alignments; if ($a.Count -gt 0) { $names = @($a | % { $_.Name }); $ctx += "Alinhamentos ($($a.Count)): $($names -join ', ')" } } catch { }
+        # Surfaces
+        try { $s = $cDoc.Surfaces; if ($s.Count -gt 0) { $names = @($s | % { $_.Name }); $ctx += "Superficies ($($s.Count)): $($names -join ', ')" } } catch { }
+        # Corridors
+        try { $c = $cDoc.Corridors; if ($c.Count -gt 0) { $names = @($c | % { $_.Name }); $ctx += "Corredores ($($c.Count)): $($names -join ', ')" } } catch { }
+        # Pipe Networks
+        try { $p = $cDoc.PipeNetworks; if ($p.Count -gt 0) { $names = @($p | % { $_.Name }); $ctx += "Redes tubulacao ($($p.Count)): $($names -join ', ')" } } catch { }
+        # Sites
+        try { $si = $cDoc.Sites; if ($si.Count -gt 0) { $names = @($si | % { $_.Name }); $ctx += "Sites ($($si.Count)): $($names -join ', ')" } } catch { }
+        # Profiles
+        try { $pr = $cDoc.Profiles; if ($pr.Count -gt 0) { $ctx += "Perfis: $($pr.Count)" } } catch { }
+        # Assemblies
+        try { $as = $cDoc.Assemblies; if ($as.Count -gt 0) { $ctx += "Montagens: $($as.Count)" } } catch { }
+        # Parcels
+        try { $pa = $cDoc.Parcels; if ($pa.Count -gt 0) { $ctx += "Lotes: $($pa.Count)" } } catch { }
+        # Feature Lines
+        try { $fl = $cDoc.FeatureLines; if ($fl.Count -gt 0) { $ctx += "Feature Lines: $($fl.Count)" } } catch { }
+        # Gradings
+        try { $gr = $cDoc.Gradings; if ($gr.Count -gt 0) { $ctx += "Gradings: $($gr.Count)" } } catch { }
+    } catch { }
+
+    return ($ctx -join "`n")
+}
+
 # ---------- FUNCAO: Enviar comando pro Civil 3D ----------
 function Send-C3DCommand {
     param([string]$command)
@@ -136,7 +194,10 @@ while ($true) {
     Write-Host " pensando..." -ForegroundColor DarkGray
     
     try {
-        $response = Invoke-DeepSeek -question $question
+        # Coleta contexto do desenho e anexa a pergunta
+        $context = Get-C3DContext
+        $fullQuestion = "[CONTEXTO DO DESENHO ATUAL]`n$context`n`n[PERGUNTA DO USUARIO]`n$question"
+        $response = Invoke-DeepSeek -question $fullQuestion
         $parsed = Extract-Command -response $response
         
         Write-Host ""

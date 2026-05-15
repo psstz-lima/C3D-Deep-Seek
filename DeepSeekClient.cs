@@ -49,19 +49,31 @@ namespace C3DDeepSeek
         }
 
         /// <summary>
-        /// Envia pergunta para o DeepSeek e retorna a resposta interpretada
+        /// Envia pergunta para o DeepSeek e retorna a resposta interpretada.
+        /// Inclui automaticamente o contexto do desenho atual do Civil 3D.
         /// </summary>
         public async Task<DeepSeekResponse> AskAsync(string userMessage)
         {
             try
             {
+                // Coleta contexto do desenho aberto (layers, alinhamentos, superfícies, etc.)
+                string contextInfo = "";
+                try { contextInfo = DeepSeekContext.CollectContext(); } catch { }
+
+                // Monta a mensagem do usuário com o contexto
+                string fullUserMessage = userMessage;
+                if (!string.IsNullOrWhiteSpace(contextInfo))
+                {
+                    fullUserMessage = $"[CONTEXTO DO DESENHO ATUAL]\n{contextInfo}\n\n[PERGUNTA DO USUÁRIO]\n{userMessage}";
+                }
+
                 var payload = new
                 {
                     model = Model,
                     messages = new[]
                     {
                         new { role = "system", content = SystemPrompt },
-                        new { role = "user", content = userMessage }
+                        new { role = "user", content = fullUserMessage }
                     },
                     temperature = 0.3,
                     max_tokens = 800
