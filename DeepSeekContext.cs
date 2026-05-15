@@ -94,69 +94,83 @@ namespace C3DDeepSeek
 
         private static void CollectCivil3DContext(StringBuilder sb)
         {
-            // Tenta via API managed primeiro
-            try
-            {
-                CollectCivilManaged(sb);
+            // Tenta via API managed primeiro (in-process, NETLOAD)
+            if (CollectCivilManaged(sb))
                 return;
-            }
-            catch
-            {
-                // Fallback: tenta via COM
-            }
 
-            try
-            {
-                CollectCivilCom(sb);
-            }
-            catch
-            {
-                sb.AppendLine("⚠️ Não foi possível ler objetos do Civil 3D.");
-            }
+            // Fallback: tenta via COM interop
+            if (CollectCivilCom(sb))
+                return;
+
+            sb.AppendLine("⚠️ Civil 3D não detectado. O desenho pode ser AutoCAD puro (sem objetos Civil).");
         }
 
-        private static void CollectCivilManaged(StringBuilder sb)
+        /// <summary>
+        /// Tenta carregar AeccDbMgd e usar CivilApplication diretamente
+        /// </summary>
+        private static bool CollectCivilManaged(StringBuilder sb)
         {
-            // Usa a API managed do Civil 3D (AeccDbMgd)
-            var civilDoc = GetCivilDocument();
-            if (civilDoc == null)
+            try
             {
-                sb.AppendLine("⚠️ Documento Civil 3D não detectado (AeccDbMgd).");
-                return;
-            }
+                // Tenta carregar o assembly do Civil 3D explicitamente
+                var asm = System.Reflection.Assembly.LoadFrom(
+                    @"C:\Program Files\Autodesk\AutoCAD 2026\C3D\AeccDbMgd.dll");
 
-            using (var tr = civilDoc.Database.TransactionManager.StartTransaction())
-            {
+                if (asm == null) return false;
+
+                var civilAppType = asm.GetType("Autodesk.Civil.ApplicationServices.CivilApplication");
+                if (civilAppType == null) return false;
+
+                var activeDocProp = civilAppType.GetProperty("ActiveDocument");
+                if (activeDocProp == null) return false;
+
+                dynamic civilDoc = activeDocProp.GetValue(null);
+                if (civilDoc == null) return false;
+
                 // ── Alignments ──
                 try
                 {
-                    var alignIds = civilDoc.GetAlignmentIds();
-                    if (alignIds.Count > 0)
+                    dynamic alignIds = civilDoc.GetAlignmentIds();
+                    if (alignIds != null && alignIds.Count > 0)
                     {
                         var names = new List<string>();
-                        foreach (ObjectId id in alignIds)
+                        foreach (var id in alignIds)
                         {
-                            var align = (dynamic)tr.GetObject(id, OpenMode.ForRead);
-                            names.Add(align.Name);
+                            try
+                            {
+                                dynamic tr = civilDoc.Database.TransactionManager.StartTransaction();
+                                dynamic al = tr.GetObject(id, (Autodesk.AutoCAD.DatabaseServices.OpenMode)0); // ForRead
+                                names.Add(al.Name);
+                                tr.Dispose();
+                            }
+                            catch { }
                         }
-                        sb.AppendLine($"🛤️ Alinhamentos ({alignIds.Count}): {string.Join(", ", names)}");
+                        if (names.Count > 0)
+                            sb.AppendLine($"🛤️ Alinhamentos ({alignIds.Count}): {string.Join(", ", names)}");
                     }
                 }
-                catch { /* sem alinhamentos ou sem acesso */ }
+                catch { }
 
                 // ── Surfaces ──
                 try
                 {
-                    var surfIds = civilDoc.GetSurfaceIds();
-                    if (surfIds.Count > 0)
+                    dynamic surfIds = civilDoc.GetSurfaceIds();
+                    if (surfIds != null && surfIds.Count > 0)
                     {
                         var names = new List<string>();
-                        foreach (ObjectId id in surfIds)
+                        foreach (var id in surfIds)
                         {
-                            var surf = (dynamic)tr.GetObject(id, OpenMode.ForRead);
-                            names.Add(surf.Name);
+                            try
+                            {
+                                dynamic tr = civilDoc.Database.TransactionManager.StartTransaction();
+                                dynamic s = tr.GetObject(id, (Autodesk.AutoCAD.DatabaseServices.OpenMode)0);
+                                names.Add(s.Name);
+                                tr.Dispose();
+                            }
+                            catch { }
                         }
-                        sb.AppendLine($"⛰️ Superfícies ({surfIds.Count}): {string.Join(", ", names)}");
+                        if (names.Count > 0)
+                            sb.AppendLine($"⛰️ Superfícies ({surfIds.Count}): {string.Join(", ", names)}");
                     }
                 }
                 catch { }
@@ -164,16 +178,23 @@ namespace C3DDeepSeek
                 // ── Corridors ──
                 try
                 {
-                    var corrIds = civilDoc.GetCorridorIds();
-                    if (corrIds.Count > 0)
+                    dynamic corrIds = civilDoc.GetCorridorIds();
+                    if (corrIds != null && corrIds.Count > 0)
                     {
                         var names = new List<string>();
-                        foreach (ObjectId id in corrIds)
+                        foreach (var id in corrIds)
                         {
-                            var corr = (dynamic)tr.GetObject(id, OpenMode.ForRead);
-                            names.Add(corr.Name);
+                            try
+                            {
+                                dynamic tr = civilDoc.Database.TransactionManager.StartTransaction();
+                                dynamic c = tr.GetObject(id, (Autodesk.AutoCAD.DatabaseServices.OpenMode)0);
+                                names.Add(c.Name);
+                                tr.Dispose();
+                            }
+                            catch { }
                         }
-                        sb.AppendLine($"🛣️ Corredores ({corrIds.Count}): {string.Join(", ", names)}");
+                        if (names.Count > 0)
+                            sb.AppendLine($"🛣️ Corredores ({corrIds.Count}): {string.Join(", ", names)}");
                     }
                 }
                 catch { }
@@ -181,16 +202,23 @@ namespace C3DDeepSeek
                 // ── Pipe Networks ──
                 try
                 {
-                    var pipeIds = civilDoc.GetPipeNetworkIds();
-                    if (pipeIds.Count > 0)
+                    dynamic pipeIds = civilDoc.GetPipeNetworkIds();
+                    if (pipeIds != null && pipeIds.Count > 0)
                     {
                         var names = new List<string>();
-                        foreach (ObjectId id in pipeIds)
+                        foreach (var id in pipeIds)
                         {
-                            var net = (dynamic)tr.GetObject(id, OpenMode.ForRead);
-                            names.Add(net.Name);
+                            try
+                            {
+                                dynamic tr = civilDoc.Database.TransactionManager.StartTransaction();
+                                dynamic p = tr.GetObject(id, (Autodesk.AutoCAD.DatabaseServices.OpenMode)0);
+                                names.Add(p.Name);
+                                tr.Dispose();
+                            }
+                            catch { }
                         }
-                        sb.AppendLine($"🔧 Redes de tubulação ({pipeIds.Count}): {string.Join(", ", names)}");
+                        if (names.Count > 0)
+                            sb.AppendLine($"🔧 Redes de tubulação ({pipeIds.Count}): {string.Join(", ", names)}");
                     }
                 }
                 catch { }
@@ -198,8 +226,8 @@ namespace C3DDeepSeek
                 // ── Profiles ──
                 try
                 {
-                    var profIds = civilDoc.GetProfileIds();
-                    if (profIds.Count > 0)
+                    dynamic profIds = civilDoc.GetProfileIds();
+                    if (profIds != null && profIds.Count > 0)
                         sb.AppendLine($"📊 Perfis: {profIds.Count}");
                 }
                 catch { }
@@ -207,16 +235,23 @@ namespace C3DDeepSeek
                 // ── Assemblies ──
                 try
                 {
-                    var asmIds = civilDoc.GetAssemblyIds();
-                    if (asmIds.Count > 0)
+                    dynamic asmIds = civilDoc.GetAssemblyIds();
+                    if (asmIds != null && asmIds.Count > 0)
                     {
                         var names = new List<string>();
-                        foreach (ObjectId id in asmIds)
+                        foreach (var id in asmIds)
                         {
-                            var asm = (dynamic)tr.GetObject(id, OpenMode.ForRead);
-                            names.Add(asm.Name);
+                            try
+                            {
+                                dynamic tr = civilDoc.Database.TransactionManager.StartTransaction();
+                                dynamic a = tr.GetObject(id, (Autodesk.AutoCAD.DatabaseServices.OpenMode)0);
+                                names.Add(a.Name);
+                                tr.Dispose();
+                            }
+                            catch { }
                         }
-                        sb.AppendLine($"🏗️ Montagens ({asmIds.Count}): {string.Join(", ", names)}");
+                        if (names.Count > 0)
+                            sb.AppendLine($"🏗️ Montagens ({asmIds.Count}): {string.Join(", ", names)}");
                     }
                 }
                 catch { }
@@ -224,16 +259,23 @@ namespace C3DDeepSeek
                 // ── Sites ──
                 try
                 {
-                    var siteIds = civilDoc.GetSiteIds();
-                    if (siteIds.Count > 0)
+                    dynamic siteIds = civilDoc.GetSiteIds();
+                    if (siteIds != null && siteIds.Count > 0)
                     {
                         var names = new List<string>();
-                        foreach (ObjectId id in siteIds)
+                        foreach (var id in siteIds)
                         {
-                            var site = (dynamic)tr.GetObject(id, OpenMode.ForRead);
-                            names.Add(site.Name);
+                            try
+                            {
+                                dynamic tr = civilDoc.Database.TransactionManager.StartTransaction();
+                                dynamic si = tr.GetObject(id, (Autodesk.AutoCAD.DatabaseServices.OpenMode)0);
+                                names.Add(si.Name);
+                                tr.Dispose();
+                            }
+                            catch { }
                         }
-                        sb.AppendLine($"📍 Sites ({siteIds.Count}): {string.Join(", ", names)}");
+                        if (names.Count > 0)
+                            sb.AppendLine($"📍 Sites ({siteIds.Count}): {string.Join(", ", names)}");
                     }
                 }
                 catch { }
@@ -241,8 +283,8 @@ namespace C3DDeepSeek
                 // ── Parcels ──
                 try
                 {
-                    var parcelIds = civilDoc.GetParcelIds();
-                    if (parcelIds.Count > 0)
+                    dynamic parcelIds = civilDoc.GetParcelIds();
+                    if (parcelIds != null && parcelIds.Count > 0)
                         sb.AppendLine($"🏘️ Lotes: {parcelIds.Count}");
                 }
                 catch { }
@@ -250,45 +292,74 @@ namespace C3DDeepSeek
                 // ── Feature Lines ──
                 try
                 {
-                    var flIds = civilDoc.GetFeatureLineIds();
-                    if (flIds.Count > 0)
+                    dynamic flIds = civilDoc.GetFeatureLineIds();
+                    if (flIds != null && flIds.Count > 0)
                         sb.AppendLine($"📐 Feature Lines: {flIds.Count}");
                 }
                 catch { }
 
-                // ── Grading ──
+                // ── Gradings ──
                 try
                 {
-                    var gradIds = civilDoc.GetGradingIds();
-                    if (gradIds.Count > 0)
+                    dynamic gradIds = civilDoc.GetGradingIds();
+                    if (gradIds != null && gradIds.Count > 0)
                         sb.AppendLine($"⛏️ Gradings: {gradIds.Count}");
                 }
                 catch { }
 
-                tr.Commit();
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 
-        private static void CollectCivilCom(StringBuilder sb)
+        /// <summary>
+        /// Fallback COM — usa o AutoCAD.Application COM para acessar objetos Civil 3D
+        /// </summary>
+        private static bool CollectCivilCom(StringBuilder sb)
         {
-            // Fallback via COM Interop
             try
             {
+                // Usa o objeto Application do AutoCAD (in-process)
                 dynamic acadApp = Application.AcadApplication;
+                if (acadApp == null) return false;
+
                 dynamic civilApp = null;
 
-                // Tenta obter a aplicação Civil 3D via COM
-                try { civilApp = acadApp.GetInterfaceObject("AeccXUiLand.AeccApplication.14.0"); }
-                catch { try { civilApp = acadApp.GetInterfaceObject("AeccXUiLand.AeccApplication.13.0"); }
-                catch { /* versões anteriores */ } }
+                // Tenta várias versões do ProgID do Civil 3D
+                string[] progIds = {
+                    "AeccXUiLand.AeccApplication.14.0",  // Civil 3D 2026
+                    "AeccXUiLand.AeccApplication.13.5",  // Civil 3D 2025
+                    "AeccXUiLand.AeccApplication.13.0",  // Civil 3D 2024
+                    "AeccXUiLand.AeccApplication.12.0",  // Civil 3D 2023
+                };
+
+                foreach (var progId in progIds)
+                {
+                    try
+                    {
+                        civilApp = acadApp.GetInterfaceObject(progId);
+                        if (civilApp != null) break;
+                    }
+                    catch { }
+                }
 
                 if (civilApp == null)
                 {
-                    sb.AppendLine("⚠️ Aplicação Civil 3D não encontrada via COM.");
-                    return;
+                    // Tenta via Marshal (fora do processo)
+                    try
+                    {
+                        civilApp = System.Runtime.InteropServices.Marshal.GetActiveObject(progIds[0]);
+                    }
+                    catch { }
                 }
 
+                if (civilApp == null) return false;
+
                 dynamic civilDoc = civilApp.ActiveDocument;
+                if (civilDoc == null) return false;
 
                 // Alignments
                 try
@@ -374,32 +445,12 @@ namespace C3DDeepSeek
                 // Gradings
                 try { dynamic grads = civilDoc.Gradings; if (grads.Count > 0) sb.AppendLine($"⛏️ Gradings: {grads.Count}"); }
                 catch { }
+
+                return true;
             }
             catch
             {
-                sb.AppendLine("⚠️ Não foi possível acessar objetos Civil 3D via COM.");
-            }
-        }
-
-        /// <summary>
-        /// Tenta obter o CivilDocument usando reflexão (evita dependência forte de AeccDbMgd)
-        /// </summary>
-        private static dynamic GetCivilDocument()
-        {
-            try
-            {
-                // Tenta carregar CivilApplication dinamicamente
-                var civilAppType = Type.GetType("Autodesk.Civil.ApplicationServices.CivilApplication, AeccDbMgd");
-                if (civilAppType == null) return null;
-
-                var activeDocProp = civilAppType.GetProperty("ActiveDocument");
-                if (activeDocProp == null) return null;
-
-                return activeDocProp.GetValue(null);
-            }
-            catch
-            {
-                return null;
+                return false;
             }
         }
     }
