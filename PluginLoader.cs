@@ -467,6 +467,91 @@ namespace C3DDeepSeek
         }
 
         /// <summary>
+        /// COMANDO: DSOPTIMIZE
+        /// Otimiza superfícies — remove outliers, copas de árvores, ruído de drone
+        /// Ideal para DTM gerado por WebODM, Pix4D, DJI Terra
+        /// </summary>
+        [CommandMethod("DSOPTIMIZE", CommandFlags.Modal)]
+        public void OptimizeSurface()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🔧 DSOPTIMIZE — Otimizador de Superfície para Drone");
+            ed.WriteMessage("\nRemove outliers, copas de árvores e ruídos do DTM.");
+            ed.WriteMessage("\n");
+
+            // Lista superfícies disponíveis
+            try
+            {
+                dynamic acadApp = AcAp.Application.AcadApplication;
+                dynamic civilApp = acadApp.GetInterfaceObject("AeccXUiLand.AeccApplication.14.0");
+                dynamic civilDoc = civilApp.ActiveDocument;
+                dynamic surfaces = civilDoc.Surfaces;
+
+                if (surfaces.Count == 0)
+                {
+                    ed.WriteMessage("\n⚠️ Nenhuma superfície encontrada no projeto.");
+                    return;
+                }
+
+                ed.WriteMessage("\n📋 Superfícies disponíveis:");
+                foreach (dynamic s in surfaces)
+                    ed.WriteMessage($"\n   ▸ {s.Name} (Tipo: {s.Type})");
+            }
+            catch
+            {
+                ed.WriteMessage("\n⚠️ Não foi possível listar superfícies.");
+                return;
+            }
+
+            var nameResult = ed.GetString("\nNome da superfície (ou ALL para todas): ");
+            if (nameResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var surfaceName = nameResult.StringResult.Trim();
+            if (string.IsNullOrWhiteSpace(surfaceName)) return;
+
+            // Pergunta se quer preview (análise) ou otimização completa
+            var modeResult = ed.GetString("\nModo [A]nálise (sem modificar) ou [O]timizar: ");
+            bool optimizeMode = modeResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                                modeResult.StringResult.Trim().ToUpper() == "O";
+
+            if (surfaceName.ToUpper() == "ALL")
+            {
+                ed.WriteMessage("\n🔧 Otimizando TODAS as superfícies...");
+                var result = SurfaceOptimizer.OptimizeAll();
+                ed.WriteMessage($"\n{result.Report}");
+            }
+            else if (optimizeMode)
+            {
+                // Parâmetros avançados
+                var stdDevResult = ed.GetString("\nDesvio padrão para outliers [2.5]: ");
+                double stdDev = 2.5;
+                if (stdDevResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                    double.TryParse(stdDevResult.StringResult.Trim().Replace(".", ","), out double sd))
+                    stdDev = sd;
+
+                var vegResult = ed.GetString("\nThreshold vegetação (m) [1.5]: ");
+                double vegThresh = 1.5;
+                if (vegResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                    double.TryParse(vegResult.StringResult.Trim().Replace(".", ","), out double vt))
+                    vegThresh = vt;
+
+                ed.WriteMessage($"\n🔧 Otimizando '{surfaceName}' (σ={stdDev}, veg={vegThresh}m)...");
+                var result = SurfaceOptimizer.Optimize(surfaceName, stdDev, vegThresh);
+                ed.WriteMessage($"\n{result.Report}");
+            }
+            else
+            {
+                // Modo análise
+                ed.WriteMessage($"\n🔍 Analisando '{surfaceName}'...");
+                var result = SurfaceOptimizer.Analyze(surfaceName);
+                ed.WriteMessage($"\n{result.Report}");
+            }
+        }
+
+        /// <summary>
         /// COMANDO: DSCODE
         /// Gera código LISP ou .NET para tarefas personalizadas
         /// </summary>

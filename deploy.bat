@@ -65,6 +65,7 @@ echo         ^<Command Global="DSCALC" Local="DSCALC" /^>
 echo         ^<Command Global="DSIMPORT" Local="DSIMPORT" /^>
 echo         ^<Command Global="DSEXPORT" Local="DSEXPORT" /^>
 echo         ^<Command Global="DSCODE" Local="DSCODE" /^>
+echo         ^<Command Global="DSOPTIMIZE" Local="DSOPTIMIZE" /^>
 echo       ^</Commands^>
 echo     ^</ComponentEntry^>
 echo   ^</Components^>
