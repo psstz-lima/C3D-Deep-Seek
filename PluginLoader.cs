@@ -606,6 +606,261 @@ namespace C3DDeepSeek
         }
 
         /// <summary>
+        /// COMANDO: DSSHEETS
+        /// Gera folhas de Planta/Perfil — A0, A1, A2, A3, A4, Personalizado + DWT
+        /// </summary>
+        [CommandMethod("DSSHEETS", CommandFlags.Modal)]
+        public void GenerateSheets()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n📐 DSSHEETS — Gerador de Folhas Técnicas");
+            ed.WriteMessage($"\n{SheetGenerator.ListFormats()}");
+
+            var config = new SheetGenerator.SheetConfig();
+
+            var fmtResult = ed.GetString("\nFormato [A0/A1/A2/A3/A4/Personalizado]: ");
+            if (fmtResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+            config.Format = string.IsNullOrWhiteSpace(fmtResult.StringResult) ? "A1" : fmtResult.StringResult.Trim();
+
+            var scaleResult = ed.GetString("\nEscala (ex: 1000 para 1:1000): ");
+            if (scaleResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                double.TryParse(scaleResult.StringResult.Replace(".", ","), out double sc))
+                config.Scale = sc;
+
+            var alignResult = ed.GetString("\nNome do alinhamento (ou ENTER para principal): ");
+            config.AlignmentName = alignResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK
+                ? alignResult.StringResult.Trim() : "";
+
+            var templateResult = ed.GetString("\nCaminho do DWT (ou ENTER para padrão): ");
+            if (templateResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                config.TemplatePath = templateResult.StringResult.Trim();
+
+            var profileResult = ed.GetString("\nIncluir perfil? [S/N]: ");
+            config.IncludeProfile = profileResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK ||
+                                    profileResult.StringResult.Trim().ToUpper() != "N";
+
+            var output = SheetGenerator.GeneratePlanProfileSheets(config);
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSCLASH
+        /// Detecta interferências entre redes, corredores, estruturas
+        /// </summary>
+        [CommandMethod("DSCLASH", CommandFlags.Modal)]
+        public void ClashDetection()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🔍 DSCLASH — Detector de Interferências...");
+            var result = ClashDetector.RunFullClashAnalysis();
+            ed.WriteMessage($"\n{result}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSDIM
+        /// Rotulagem inteligente: estacas, curvas, tubulações, tabelas
+        /// </summary>
+        [CommandMethod("DSDIM", CommandFlags.Modal)]
+        public void SmartDimension()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🏷️ DSDIM — Rotulador Inteligente");
+            ed.WriteMessage("\n[1] Rotular estacas de alinhamento");
+            ed.WriteMessage("\n[2] Rotular curvas de nível");
+            ed.WriteMessage("\n[3] Tabela de curvas horizontais");
+            ed.WriteMessage("\n[4] Tabela de PIVs");
+            ed.WriteMessage("\n[5] Rotular tubulações");
+            ed.WriteMessage("\n[6] Rotular estruturas");
+            ed.WriteMessage("\n[7] Rotular TUDO automático");
+
+            var result = ed.GetString("\nOpção [1-7]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            string output = "";
+            switch (result.StringResult.Trim())
+            {
+                case "1":
+                    var a1 = ed.GetString("\nNome do alinhamento: ");
+                    if (a1.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                        output = SmartLabeler.LabelAlignmentStations(a1.StringResult.Trim());
+                    break;
+                case "2":
+                    var s2 = ed.GetString("\nNome da superfície: ");
+                    if (s2.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                        output = SmartLabeler.LabelContours(s2.StringResult.Trim());
+                    break;
+                case "3":
+                    var a3 = ed.GetString("\nNome do alinhamento: ");
+                    if (a3.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                        output = SmartLabeler.GenerateCurveTable(a3.StringResult.Trim());
+                    break;
+                case "4":
+                    var a4 = ed.GetString("\nNome do alinhamento: ");
+                    if (a4.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                        output = SmartLabeler.GeneratePIVTable(a4.StringResult.Trim());
+                    break;
+                case "5":
+                    var n5 = ed.GetString("\nNome da rede: ");
+                    if (n5.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                        output = SmartLabeler.LabelPipes(n5.StringResult.Trim());
+                    break;
+                case "6":
+                    var n6 = ed.GetString("\nNome da rede: ");
+                    if (n6.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                        output = SmartLabeler.LabelStructures(n6.StringResult.Trim());
+                    break;
+                case "7":
+                    var a7 = ed.GetString("\nAlinhamento: ");
+                    var s7 = ed.GetString("\nSuperfície: ");
+                    var p7 = ed.GetString("\nRede de tubulação: ");
+                    output = SmartLabeler.LabelAll(
+                        a7.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK ? a7.StringResult.Trim() : "",
+                        s7.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK ? s7.StringResult.Trim() : "",
+                        p7.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK ? p7.StringResult.Trim() : "");
+                    break;
+                default: output = "⚠️ Opção inválida."; break;
+            }
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSDESIGN
+        /// Verifica conformidade com normas DNIT/AASHTO
+        /// </summary>
+        [CommandMethod("DSDESIGN", CommandFlags.Modal)]
+        public void DesignCheck()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n📏 DSDESIGN — Verificação de Normas");
+            ed.WriteMessage("\n[1] Verificar por velocidade diretriz");
+            ed.WriteMessage("\n[2] Classificar via por VDM");
+
+            var result = ed.GetString("\nOpção [1-2]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            string output = "";
+            if (result.StringResult.Trim() == "1")
+            {
+                var spd = ed.GetString("\nVelocidade diretriz (km/h) [40/60/80/100/120]: ");
+                if (spd.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                    double.TryParse(spd.StringResult.Replace(".", ","), out double v))
+                    output = DesignChecker.CheckByDesignSpeed(v);
+            }
+            else if (result.StringResult.Trim() == "2")
+            {
+                var vdm = ed.GetString("\nVDM (veículos/dia): ");
+                if (vdm.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                    double.TryParse(vdm.StringResult.Replace(".", ","), out double v))
+                    output = DesignChecker.GetRoadClassification(v);
+            }
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSBIM
+        /// Dashboard BIM com indicadores, progresso e checklist
+        /// </summary>
+        [CommandMethod("DSBIM", CommandFlags.Modal)]
+        public void ShowBimDashboard()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n📊 DSBIM — Gerando Dashboard...");
+            var result = BimDashboard.Generate();
+            ed.WriteMessage($"\n{result}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSTRANSFORM
+        /// Conversão de coordenadas: UTM ↔ Topográfico, Geográfico → UTM
+        /// </summary>
+        [CommandMethod("DSTRANSFORM", CommandFlags.Modal)]
+        public void CoordinateTransform()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🗺️ DSTRANSFORM — Transformação de Coordenadas");
+            ed.WriteMessage("\n[1] UTM → Topográfico Local");
+            ed.WriteMessage("\n[2] Topográfico → UTM");
+            ed.WriteMessage("\n[3] Geográfico (Lat/Lon) → UTM");
+            ed.WriteMessage("\n[4] Definir sistema de coordenadas EPSG");
+            ed.WriteMessage("\n[5] Listar sistemas do Brasil");
+
+            var result = ed.GetString("\nOpção [1-5]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            string output = "";
+            switch (result.StringResult.Trim())
+            {
+                case "1":
+                    var e1 = ed.GetString("\nEasting UTM: "); double.TryParse(e1.StringResult.Replace(".", ","), out double east);
+                    var n1 = ed.GetString("\nNorthing UTM: "); double.TryParse(n1.StringResult.Replace(".", ","), out double north);
+                    var az = ed.GetString("\nAzimute do eixo (°): "); double.TryParse(az.StringResult.Replace(".", ","), out double azimuth);
+                    var xo = ed.GetString("\nX origem (opcional): "); double.TryParse(xo.StringResult.Replace(".", ","), out double xOrig);
+                    var yo = ed.GetString("\nY origem (opcional): "); double.TryParse(yo.StringResult.Replace(".", ","), out double yOrig);
+                    output = CoordinateTransformer.UtmToTopographic(east, north, azimuth, xOrig, yOrig);
+                    break;
+                case "2":
+                    var x2 = ed.GetString("\nX Topográfico: "); double.TryParse(x2.StringResult.Replace(".", ","), out double xTopo);
+                    var y2 = ed.GetString("\nY Topográfico: "); double.TryParse(y2.StringResult.Replace(".", ","), out double yTopo);
+                    output = CoordinateTransformer.TopographicToUtm(xTopo, yTopo);
+                    break;
+                case "3":
+                    var lat = ed.GetString("\nLatitude (°): "); double.TryParse(lat.StringResult.Replace(".", ","), out double la);
+                    var lon = ed.GetString("\nLongitude (°): "); double.TryParse(lon.StringResult.Replace(".", ","), out double lo);
+                    output = CoordinateTransformer.GeoToUtm(la, lo);
+                    break;
+                case "4":
+                    var epsg = ed.GetString("\nCódigo EPSG: ");
+                    if (epsg.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                        output = CoordinateTransformer.SetCoordinateSystem(epsg.StringResult.Trim());
+                    break;
+                case "5":
+                    output = CoordinateTransformer.ListBrazilSystems();
+                    break;
+            }
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSTEMPLATE
+        /// Cria projeto novo com layers e configurações padrão por tipo
+        /// </summary>
+        [CommandMethod("DSTEMPLATE", CommandFlags.Modal)]
+        public void CreateFromTemplate()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🏗️ DSTEMPLATE — Novo Projeto por Template");
+            ed.WriteMessage($"\n{TemplateManager.ListAvailableTemplates()}");
+
+            var result = ed.GetString("\nTipo [RODOVIA/LOTEAMENTO/SANEAMENTO/DRENAGEM/TERRAPLENAGEM]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            ed.WriteMessage("\n🏗️ Criando projeto...");
+            var output = TemplateManager.CreateFromTemplate(result.StringResult.Trim());
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
         /// COMANDO: DSCODE
         /// Gera código LISP ou .NET para tarefas personalizadas
         /// </summary>

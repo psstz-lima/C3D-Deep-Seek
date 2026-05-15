@@ -37,6 +37,13 @@
         <Command Global="DSCODE" Local="DSCODE" />
         <Command Global="DSOPTIMIZE" Local="DSOPTIMIZE" />
         <Command Global="DSASSEMBLY" Local="DSASSEMBLY" />
+        <Command Global="DSSHEETS" Local="DSSHEETS" />
+        <Command Global="DSCLASH" Local="DSCLASH" />
+        <Command Global="DSDIM" Local="DSDIM" />
+        <Command Global="DSDESIGN" Local="DSDESIGN" />
+        <Command Global="DSBIM" Local="DSBIM" />
+        <Command Global="DSTRANSFORM" Local="DSTRANSFORM" />
+        <Command Global="DSTEMPLATE" Local="DSTEMPLATE" />
       </Commands>
     </ComponentEntry>
   </Components>

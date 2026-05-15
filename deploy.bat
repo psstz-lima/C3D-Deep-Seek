@@ -67,6 +67,13 @@ echo         ^<Command Global="DSEXPORT" Local="DSEXPORT" /^>
 echo         ^<Command Global="DSCODE" Local="DSCODE" /^>
 echo         ^<Command Global="DSOPTIMIZE" Local="DSOPTIMIZE" /^>
 echo         ^<Command Global="DSASSEMBLY" Local="DSASSEMBLY" /^>
+echo         ^<Command Global="DSSHEETS" Local="DSSHEETS" /^>
+echo         ^<Command Global="DSCLASH" Local="DSCLASH" /^>
+echo         ^<Command Global="DSDIM" Local="DSDIM" /^>
+echo         ^<Command Global="DSDESIGN" Local="DSDESIGN" /^>
+echo         ^<Command Global="DSBIM" Local="DSBIM" /^>
+echo         ^<Command Global="DSTRANSFORM" Local="DSTRANSFORM" /^>
+echo         ^<Command Global="DSTEMPLATE" Local="DSTEMPLATE" /^>
 echo       ^</Commands^>
 echo     ^</ComponentEntry^>
 echo   ^</Components^>
