@@ -79,6 +79,7 @@ echo         ^<Command Global="DSBRUCKNER" Local="DSBRUCKNER" /^>
 echo         ^<Command Global="DSDRAINAGE" Local="DSDRAINAGE" /^>
 echo         ^<Command Global="DSGOOGLEMAPS" Local="DSGOOGLEMAPS" /^>
 echo         ^<Command Global="DSCONNECT" Local="DSCONNECT" /^>
+echo         ^<Command Global="DSSECTIONS" Local="DSSECTIONS" /^>
 echo       ^</Commands^>
 echo     ^</ComponentEntry^>
 echo   ^</Components^>

@@ -49,6 +49,7 @@
         <Command Global="DSDRAINAGE" Local="DSDRAINAGE" />
         <Command Global="DSGOOGLEMAPS" Local="DSGOOGLEMAPS" />
         <Command Global="DSCONNECT" Local="DSCONNECT" />
+        <Command Global="DSSECTIONS" Local="DSSECTIONS" />
       </Commands>
     </ComponentEntry>
   </Components>
