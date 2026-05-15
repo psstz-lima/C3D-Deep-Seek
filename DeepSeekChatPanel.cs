@@ -214,24 +214,15 @@ namespace C3DDeepSeek
 
             try
             {
-                // Usa COM SendCommand — mesmo método que o PowerShell, comprovadamente funciona
-                dynamic acadApp = AcAp.Application.AcadApplication;
-                acadApp.ActiveDocument.SendCommand(command + "\n");
+                // Usa o motor premium para execução inteligente
+                var response = new DeepSeekResponse { Success = true, Command = command };
+                var result = DeepSeekEngine.Execute(response);
+                DeepSeekEngine.DisplayResult(result);
                 _statusText.Text = $"Comando executado: {command}";
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback: SendStringToExecute
-                var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
-                if (doc != null)
-                {
-                    doc.SendStringToExecute(command + "\n", true, false, true);
-                    _statusText.Text = $"Comando enviado: {command}";
-                }
-                else
-                {
-                    _statusText.Text = "Nenhum documento ativo.";
-                }
+                _statusText.Text = $"Erro: {ex.Message}";
             }
         }
 

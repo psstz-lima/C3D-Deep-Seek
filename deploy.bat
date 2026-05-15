@@ -55,6 +55,9 @@ echo       ^<Commands GroupName="DeepSeekAI"^>
 echo         ^<Command Global="DEEPSEEK" Local="DEEPSEEK" /^>
 echo         ^<Command Global="DSASK" Local="DSASK" /^>
 echo         ^<Command Global="CONFIGDS" Local="CONFIGDS" /^>
+echo         ^<Command Global="DSREPORT" Local="DSREPORT" /^>
+echo         ^<Command Global="DSANALYZE" Local="DSANALYZE" /^>
+echo         ^<Command Global="DSMODEL" Local="DSMODEL" /^>
 echo       ^</Commands^>
 echo     ^</ComponentEntry^>
 echo   ^</Components^>

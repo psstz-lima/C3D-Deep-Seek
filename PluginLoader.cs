@@ -199,8 +199,148 @@ namespace C3DDeepSeek
                     if (execResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
                         execResult.StringResult.Trim().ToUpper() == "S")
                     {
-                        ExecuteInAutoCAD(response.Command);
+                        // Usa o motor premium para execução inteligente
+                        var execResult2 = DeepSeekEngine.Execute(response);
+                        DeepSeekEngine.DisplayResult(execResult2);
                     }
+                }
+            }
+            else
+            {
+                ed.WriteMessage($"\n❌ Erro: {response.Text}");
+            }
+        }
+
+        /// <summary>
+        /// COMANDO: DSREPORT
+        /// Gera relatórios do projeto: superfícies, alinhamentos, quantitativos, BIM
+        /// Uso: DSREPORT [FULL|SURFACES|ALIGNMENTS|CORRIDORS|PIPES|VOLUMES|LAYERS|QUANTITIES|BIM]
+        /// </summary>
+        [CommandMethod("DSREPORT", CommandFlags.Modal)]
+        public void GenerateReport()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
+            var ed = doc.Editor;
+
+            var apiKey = DeepSeekConfig.LoadApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                ed.WriteMessage("\n[C3D DeepSeek] ⚠ Chave API não configurada. Use CONFIGDS.");
+                return;
+            }
+
+            var result = ed.GetString("\nTipo de relatório [FULL/SURFACES/ALIGNMENTS/CORRIDORS/PIPES/VOLUMES/LAYERS/QUANTITIES/BIM]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                return;
+
+            var reportType = string.IsNullOrWhiteSpace(result.StringResult) ? "FULL" : result.StringResult.Trim().ToUpper();
+
+            ed.WriteMessage($"\n📊 Gerando relatório '{reportType}'...");
+
+            var response = new DeepSeekResponse
+            {
+                Success = true,
+                Command = $"RELATORIO:{reportType}"
+            };
+
+            var execResult = DeepSeekEngine.Execute(response);
+            DeepSeekEngine.DisplayResult(execResult);
+        }
+
+        /// <summary>
+        /// COMANDO: DSANALYZE
+        /// Analisa o desenho atual usando IA — envia contexto completo para o DeepSeek
+        /// e retorna uma análise inteligente do projeto.
+        /// </summary>
+        [CommandMethod("DSANALYZE", CommandFlags.Modal)]
+        public void AnalyzeProject()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
+            var ed = doc.Editor;
+
+            var apiKey = DeepSeekConfig.LoadApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                ed.WriteMessage("\n[C3D DeepSeek] ⚠ Chave API não configurada. Use CONFIGDS.");
+                return;
+            }
+
+            ed.WriteMessage("\n🔍 Analisando projeto com DeepSeek AI...");
+
+            var client = new DeepSeekClient(apiKey);
+            var response = System.Threading.Tasks.Task.Run(() =>
+                client.AskAsync("Faça uma análise completa deste projeto Civil 3D: " +
+                    "identifique o tipo de obra (rodovia, loteamento, drenagem, terraplenagem), " +
+                    "liste os elementos principais, aponte possíveis inconsistências ou melhorias, " +
+                    "e sugira próximos passos no fluxo de trabalho BIM. " +
+                    "Seja técnico e objetivo.")).Result;
+
+            if (response.Success)
+            {
+                ed.WriteMessage($"\n\n🤖 ANÁLISE DO PROJETO:\n{response.Text}");
+
+                if (response.HasCommand)
+                {
+                    ed.WriteMessage($"\n⚙️ Ação sugerida: {response.Command}");
+                }
+            }
+            else
+            {
+                ed.WriteMessage($"\n❌ Erro na análise: {response.Text}");
+            }
+        }
+
+        /// <summary>
+        /// COMANDO: DSMODEL
+        /// Operações de modelagem inteligente via linguagem natural.
+        /// Ex: DSMODEL → "crie uma superfície TIN com os pontos da layer PONTOS"
+        /// </summary>
+        [CommandMethod("DSMODEL", CommandFlags.Modal)]
+        public void SmartModeling()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
+            var ed = doc.Editor;
+
+            var apiKey = DeepSeekConfig.LoadApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                ed.WriteMessage("\n[C3D DeepSeek] ⚠ Chave API não configurada. Use CONFIGDS.");
+                return;
+            }
+
+            ed.WriteMessage("\n🏗️ DSMODEL — Modelagem Inteligente via IA");
+            ed.WriteMessage("\nDescreva o que você quer criar/modificar no projeto:");
+
+            var result = ed.GetString("\n> ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                return;
+
+            var description = result.StringResult.Trim();
+            if (string.IsNullOrWhiteSpace(description)) return;
+
+            ed.WriteMessage("\n🧠 Processando instrução de modelagem...");
+
+            var client = new DeepSeekClient(apiKey);
+            var response = System.Threading.Tasks.Task.Run(() =>
+                client.AskAsync($"Execute a seguinte operação de modelagem no Civil 3D: {description}. " +
+                    "Use comandos diretos, sequências ou API conforme necessário. " +
+                    "Seja preciso nos comandos gerados.")).Result;
+
+            if (response.Success)
+            {
+                ed.WriteMessage($"\n🤖 DeepSeek: {response.Text}");
+
+                if (response.HasCommand)
+                {
+                    ed.WriteMessage($"\n⚙️ Comando: {response.Command}");
+                    var execResult2 = DeepSeekEngine.Execute(response);
+                    DeepSeekEngine.DisplayResult(execResult2);
                 }
             }
             else

@@ -25,6 +25,9 @@
         <Command Global="DEEPSEEK" Local="DEEPSEEK" />
         <Command Global="DSASK" Local="DSASK" />
         <Command Global="CONFIGDS" Local="CONFIGDS" />
+        <Command Global="DSREPORT" Local="DSREPORT" />
+        <Command Global="DSANALYZE" Local="DSANALYZE" />
+        <Command Global="DSMODEL" Local="DSMODEL" />
       </Commands>
     </ComponentEntry>
   </Components>
