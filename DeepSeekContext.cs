@@ -346,16 +346,6 @@ namespace C3DDeepSeek
                     catch { }
                 }
 
-                if (civilApp == null)
-                {
-                    // Tenta via Marshal (fora do processo)
-                    try
-                    {
-                        civilApp = System.Runtime.InteropServices.Marshal.GetActiveObject(progIds[0]);
-                    }
-                    catch { }
-                }
-
                 if (civilApp == null) return false;
 
                 dynamic civilDoc = civilApp.ActiveDocument;
