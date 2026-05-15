@@ -36,6 +36,7 @@
         <Command Global="DSEXPORT" Local="DSEXPORT" />
         <Command Global="DSCODE" Local="DSCODE" />
         <Command Global="DSOPTIMIZE" Local="DSOPTIMIZE" />
+        <Command Global="DSASSEMBLY" Local="DSASSEMBLY" />
       </Commands>
     </ComponentEntry>
   </Components>

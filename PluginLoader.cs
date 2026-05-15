@@ -552,6 +552,60 @@ namespace C3DDeepSeek
         }
 
         /// <summary>
+        /// COMANDO: DSASSEMBLY
+        /// Catálogo de subassemblies e criação de montagens para corredores
+        /// </summary>
+        [CommandMethod("DSASSEMBLY", CommandFlags.Modal)]
+        public void SubassemblyTools()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🧩 DSASSEMBLY — Subassemblies e Montagens para Corredores");
+            ed.WriteMessage("\n───────────────────────────────────────────");
+            ed.WriteMessage("\n[1] Listar todos os subassemblies disponíveis");
+            ed.WriteMessage("\n[2] Criar montagem rodoviária padrão (DNIT)");
+            ed.WriteMessage("\n[3] Criar montagem urbana (avenida)");
+            ed.WriteMessage("\n[4] Iniciar ferramenta nativa de montagem");
+
+            var result = ed.GetString("\nOpção [1-4]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            switch (result.StringResult.Trim())
+            {
+                case "1":
+                    ed.WriteMessage($"\n{SubassemblyBuilder.ListAllTemplates()}");
+                    break;
+                case "2":
+                    var nameR = ed.GetString("\nNome da montagem rodoviária: ");
+                    if (nameR.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    {
+                        var name = string.IsNullOrWhiteSpace(nameR.StringResult) ? "Montagem_Rodovia" : nameR.StringResult.Trim();
+                        ed.WriteMessage($"\n{SubassemblyBuilder.BuildHighwayAssembly(name)}");
+                        DeepSeekEngine.SendToAutoCAD($"_AeccCreateAssembly \"{name}\"");
+                    }
+                    break;
+                case "3":
+                    var nameU = ed.GetString("\nNome da montagem urbana: ");
+                    if (nameU.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    {
+                        var name = string.IsNullOrWhiteSpace(nameU.StringResult) ? "Montagem_Urbana" : nameU.StringResult.Trim();
+                        ed.WriteMessage($"\n{SubassemblyBuilder.BuildUrbanAssembly(name)}");
+                        DeepSeekEngine.SendToAutoCAD($"_AeccCreateAssembly \"{name}\"");
+                    }
+                    break;
+                case "4":
+                    DeepSeekEngine.SendToAutoCAD("_AeccCreateAssembly");
+                    ed.WriteMessage("\n✅ Ferramenta de montagem nativa aberta.");
+                    break;
+                default:
+                    ed.WriteMessage("\n⚠️ Opção inválida.");
+                    break;
+            }
+        }
+
+        /// <summary>
         /// COMANDO: DSCODE
         /// Gera código LISP ou .NET para tarefas personalizadas
         /// </summary>
