@@ -861,6 +861,112 @@ namespace C3DDeepSeek
         }
 
         /// <summary>
+        /// COMANDO: DSEARTH
+        /// Análise de corte/aterro — identifica zonas, calcula volumes entre superfícies
+        /// </summary>
+        [CommandMethod("DSEARTH", CommandFlags.Modal)]
+        public void EarthworkAnalysis()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n⛏️ DSEARTH — Análise de Corte/Aterro");
+
+            var natResult = ed.GetString("\nNome da superfície NATURAL: ");
+            if (natResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var projResult = ed.GetString("\nNome da superfície de PROJETO: ");
+            if (projResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            ed.WriteMessage("\n🔍 Analisando corte/aterro...");
+            var output = EarthworkAnalyzer.IdentifyCutFillZones(
+                natResult.StringResult.Trim(), projResult.StringResult.Trim());
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSBRUCKNER
+        /// Diagrama de Brückner (mass haul) — exibe no model e exporta Excel
+        /// </summary>
+        [CommandMethod("DSBRUCKNER", CommandFlags.Modal)]
+        public void BrucknerDiagram()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n📊 DSBRUCKNER — Diagrama de Brückner (Mass Haul)");
+            ed.WriteMessage("\n═══════════════════════════════════════");
+
+            // Lista alinhamentos e superfícies
+            try
+            {
+                dynamic acadApp = AcAp.Application.AcadApplication;
+                dynamic civilApp = acadApp.GetInterfaceObject("AeccXUiLand.AeccApplication.14.0");
+                dynamic civilDoc = civilApp.ActiveDocument;
+
+                ed.WriteMessage("\n📋 Alinhamentos disponíveis:");
+                foreach (dynamic al in civilDoc.Alignments)
+                    ed.WriteMessage($"\n   ▸ {al.Name}");
+
+                ed.WriteMessage("\n📋 Superfícies disponíveis:");
+                foreach (dynamic s in civilDoc.Surfaces)
+                    ed.WriteMessage($"\n   ▸ {s.Name}");
+            }
+            catch { }
+
+            var alignResult = ed.GetString("\nNome do ALINHAMENTO: ");
+            if (alignResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var natResult = ed.GetString("\nSuperfície NATURAL: ");
+            if (natResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var projResult = ed.GetString("\nSuperfície PROJETO: ");
+            if (projResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var intervalResult = ed.GetString("\nIntervalo entre estações (m) [20]: ");
+            double interval = 20;
+            if (intervalResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                double.TryParse(intervalResult.StringResult.Replace(".", ","), out interval);
+
+            ed.WriteMessage("\n⏳ Calculando volumes...");
+
+            var data = EarthworkAnalyzer.Analyze(
+                natResult.StringResult.Trim(),
+                projResult.StringResult.Trim(),
+                alignResult.StringResult.Trim(),
+                interval);
+
+            // Relatório
+            ed.WriteMessage($"\n{EarthworkAnalyzer.GenerateReport(data)}");
+
+            // Desenhar diagrama?
+            var drawResult = ed.GetString("\nDesenhar diagrama no Model Space? [S/N]: ");
+            if (drawResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                drawResult.StringResult.Trim().ToUpper() == "S")
+            {
+                var oxResult = ed.GetString("\nOrigem X (ou ENTER para 0): ");
+                double ox = 0, oy = 0;
+                if (oxResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    double.TryParse(oxResult.StringResult.Replace(".", ","), out ox);
+
+                ed.WriteMessage("\n🎨 Desenhando Brückner...");
+                var drawOutput = EarthworkAnalyzer.DrawBrucknerDiagram(data, ox, oy);
+                ed.WriteMessage($"\n{drawOutput}");
+            }
+
+            // Exportar CSV?
+            var csvResult = ed.GetString("\nExportar para Excel/CSV? [S/N]: ");
+            if (csvResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                csvResult.StringResult.Trim().ToUpper() == "S")
+            {
+                var exportOutput = EarthworkAnalyzer.ExportBrucknerToCsv(data);
+                ed.WriteMessage($"\n{exportOutput}");
+            }
+        }
+
+        /// <summary>
         /// COMANDO: DSCODE
         /// Gera código LISP ou .NET para tarefas personalizadas
         /// </summary>

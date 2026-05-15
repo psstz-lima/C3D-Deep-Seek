@@ -44,6 +44,8 @@
         <Command Global="DSBIM" Local="DSBIM" />
         <Command Global="DSTRANSFORM" Local="DSTRANSFORM" />
         <Command Global="DSTEMPLATE" Local="DSTEMPLATE" />
+        <Command Global="DSEARTH" Local="DSEARTH" />
+        <Command Global="DSBRUCKNER" Local="DSBRUCKNER" />
       </Commands>
     </ComponentEntry>
   </Components>
