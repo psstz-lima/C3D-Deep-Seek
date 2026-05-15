@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -214,21 +215,27 @@ namespace C3DDeepSeek
                 string contextInfo = "";
                 try { contextInfo = DeepSeekContext.CollectContext(); } catch { }
 
-                // Monta a mensagem do usuário com o contexto
-                string fullUserMessage = userMessage;
+                // Coleta histórico da conversa
+                string chatHistory = "";
+                try { chatHistory = ChatHistory.GetContextForPrompt(); } catch { }
+
+                // Monta a mensagem do usuário com o contexto e histórico
+                string fullUserMessage = "";
+                if (!string.IsNullOrWhiteSpace(chatHistory))
+                    fullUserMessage += $"{chatHistory}\n\n";
                 if (!string.IsNullOrWhiteSpace(contextInfo))
-                {
-                    fullUserMessage = $"[CONTEXTO DO DESENHO ATUAL]\n{contextInfo}\n\n[PERGUNTA DO USUÁRIO]\n{userMessage}";
-                }
+                    fullUserMessage += $"[CONTEXTO DO DESENHO ATUAL]\n{contextInfo}\n\n";
+                fullUserMessage += $"[PERGUNTA DO USUÁRIO]\n{userMessage}";
+
+                // Adiciona ao histórico
+                ChatHistory.AddUserMessage(userMessage);
 
                 var payload = new
                 {
                     model = Model,
-                    messages = new[]
-                    {
-                        new { role = "system", content = SystemPrompt },
-                        new { role = "user", content = fullUserMessage }
-                    },
+                    messages = ChatHistory.GetHistoryForApi(SystemPrompt)
+                        .Concat(new[] { new { role = "user", content = fullUserMessage } })
+                        .ToArray(),
                     temperature = 0.3,
                     max_tokens = 800
                 };
@@ -251,7 +258,13 @@ namespace C3DDeepSeek
                 var parsed = JObject.Parse(responseBody);
                 var text = parsed["choices"]?[0]?["message"]?["content"]?.ToString()?.Trim() ?? "(sem resposta)";
 
-                return ParseResponse(text);
+                var result = ParseResponse(text);
+
+                // Salva resposta no histórico da conversa
+                if (result.Success)
+                    ChatHistory.AddAssistantMessage(result.Text);
+
+                return result;
             }
             catch (Exception ex)
             {

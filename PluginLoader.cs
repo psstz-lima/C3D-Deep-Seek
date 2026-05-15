@@ -348,5 +348,167 @@ namespace C3DDeepSeek
                 ed.WriteMessage($"\n❌ Erro: {response.Text}");
             }
         }
+        /// <summary>
+        /// COMANDO: DSCHECK
+        /// Analisa criticamente o projeto — detecta erros, inconsistências e sugere melhorias
+        /// </summary>
+        [CommandMethod("DSCHECK", CommandFlags.Modal)]
+        public void CheckProject()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🔍 DSCHECK — Analisando projeto...");
+            var analysis = ProjectAnalyzer.AnalyzeCurrentProject();
+            ed.WriteMessage($"\n{analysis.Report}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSCOMPARE
+        /// Compara 2 ou mais projetos abertos — compatibilização, diferenças
+        /// </summary>
+        [CommandMethod("DSCOMPARE", CommandFlags.Modal)]
+        public void CompareProjects()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n⚖️ DSCOMPARE — Comparando projetos...");
+            var analysis = ProjectAnalyzer.CompareProjects();
+            ed.WriteMessage($"\n{analysis.Report}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSWORKFLOW
+        /// Executa fluxos de trabalho guiados (rodovia, loteamento, terraplenagem, etc.)
+        /// </summary>
+        [CommandMethod("DSWORKFLOW", CommandFlags.Modal)]
+        public void RunWorkflow()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            var workflows = WorkflowEngine.GetAvailableWorkflows();
+            ed.WriteMessage("\n🚀 DSWORKFLOW — Workflows disponíveis:");
+            foreach (var w in workflows)
+                ed.WriteMessage($"\n   ▸ {w}");
+
+            var result = ed.GetString("\nWorkflow: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var wfName = result.StringResult.Trim().ToUpper();
+            var output = WorkflowEngine.ExecuteWorkflow(wfName);
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSCALC
+        /// Calculadora de engenharia: hidráulica, pavimento, terraplenagem, drenagem
+        /// </summary>
+        [CommandMethod("DSCALC", CommandFlags.Modal)]
+        public void EngineeringCalc()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n📐 DSCALC — Calculadora de Engenharia");
+            ed.WriteMessage("\nTipos: MANNING, VAZAO, DIAMETRO_TUBO, GALERIA, BOCA_LOBO, SARJETA, CANAL");
+            ed.WriteMessage("\n       PAV_DNER, CAIG, ESPESSURAS, VOLUME_CORTE, EMPOLAMENTO");
+            ed.WriteMessage("\n       TEMPO_CONC, INTENSIDADE, BACIA, DIST_FRENAGEM, CAPACIDADE");
+            ed.WriteMessage("\nFormato: TIPO param1=valor1 param2=valor2");
+
+            var result = ed.GetString("\nCálculo: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var calcCmd = "CALC:" + result.StringResult.Trim();
+            var calcResult = C3DCalculations.Execute(calcCmd);
+            ed.WriteMessage($"\n{calcResult.Result}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSIMPORT
+        /// Importa arquivos: CSV, LandXML, SHP, KML, IFC
+        /// </summary>
+        [CommandMethod("DSIMPORT", CommandFlags.Modal)]
+        public void ImportFile()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n📥 DSIMPORT — Formatos: CSV, XML (LandXML), SHP, KML/KMZ, IFC, DWG, DXF");
+
+            var result = ed.GetString("\nCaminho do arquivo: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var filePath = result.StringResult.Trim();
+            var output = DataImporter.SmartImport(filePath);
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSEXPORT
+        /// Exporta relatório completo para Excel (.xlsx)
+        /// </summary>
+        [CommandMethod("DSEXPORT", CommandFlags.Modal)]
+        public void ExportToExcel()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n📊 DSEXPORT — Gerando relatório Excel...");
+            var output = ExcelExporter.ExportFullReport();
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSCODE
+        /// Gera código LISP ou .NET para tarefas personalizadas
+        /// </summary>
+        [CommandMethod("DSCODE", CommandFlags.Modal)]
+        public void GenerateCode()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            var apiKey = DeepSeekConfig.LoadApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                ed.WriteMessage("\n[C3D DeepSeek] ⚠ Chave API não configurada. Use CONFIGDS.");
+                return;
+            }
+
+            ed.WriteMessage("\n💻 DSCODE — Gerador de Código");
+            ed.WriteMessage("\nDescreva o que o código deve fazer:");
+
+            var result = ed.GetString("\n> ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var description = result.StringResult.Trim();
+            if (string.IsNullOrWhiteSpace(description)) return;
+
+            ed.WriteMessage("\n🧠 Gerando código...");
+
+            var client = new DeepSeekClient(apiKey);
+            var response = System.Threading.Tasks.Task.Run(() =>
+                client.AskAsync($"Gere código AutoCAD (AutoLISP ou C# .NET) para: {description}. " +
+                    "Forneça o código pronto para uso, com comentários explicativos. " +
+                    "Formate como código dentro de um bloco de comando.")).Result;
+
+            if (response.Success)
+            {
+                ed.WriteMessage($"\n🤖 Código gerado:\n{response.Text}");
+            }
+            else
+            {
+                ed.WriteMessage($"\n❌ Erro: {response.Text}");
+            }
+        }
     }
 }

@@ -46,22 +46,49 @@ namespace C3DDeepSeek
             // Relatório / análise
             if (command.StartsWith("REPORT:", StringComparison.OrdinalIgnoreCase) ||
                 command.StartsWith("RELATORIO:", StringComparison.OrdinalIgnoreCase))
-            {
                 return ExecuteReport(command);
-            }
+
+            // Cálculos de engenharia
+            if (command.StartsWith("CALC:", StringComparison.OrdinalIgnoreCase))
+                return ExecuteCalculation(command);
+
+            // Workflow guiado
+            if (command.StartsWith("WORKFLOW:", StringComparison.OrdinalIgnoreCase) ||
+                command.StartsWith("FLUXO:", StringComparison.OrdinalIgnoreCase))
+                return ExecuteWorkflow(command);
+
+            // Importação de dados
+            if (command.StartsWith("IMPORT:", StringComparison.OrdinalIgnoreCase) ||
+                command.StartsWith("IMPORTAR:", StringComparison.OrdinalIgnoreCase))
+                return ExecuteImport(command);
+
+            // Exportação Excel
+            if (command.StartsWith("EXPORT:", StringComparison.OrdinalIgnoreCase) ||
+                command.StartsWith("EXPORTAR:", StringComparison.OrdinalIgnoreCase))
+                return ExecuteExport(command);
+
+            // Análise / Comparação de projetos
+            if (command.StartsWith("ANALYZE:", StringComparison.OrdinalIgnoreCase) ||
+                command.StartsWith("ANALISE:", StringComparison.OrdinalIgnoreCase))
+                return ExecuteAnalyze(command);
+
+            if (command.StartsWith("COMPARE:", StringComparison.OrdinalIgnoreCase) ||
+                command.StartsWith("COMPARAR:", StringComparison.OrdinalIgnoreCase))
+                return ExecuteCompare(command);
+
+            // Geração de código
+            if (command.StartsWith("CODE:", StringComparison.OrdinalIgnoreCase) ||
+                command.StartsWith("CODIGO:", StringComparison.OrdinalIgnoreCase))
+                return ExecuteCodeGen(command);
 
             // Operação direta Civil 3D via API
             if (command.StartsWith("API:", StringComparison.OrdinalIgnoreCase))
-            {
                 return ExecuteApiOperation(command);
-            }
 
             // BIM / IFC
             if (command.StartsWith("BIM:", StringComparison.OrdinalIgnoreCase) ||
                 command.StartsWith("IFC:", StringComparison.OrdinalIgnoreCase))
-            {
                 return ExecuteBimOperation(command);
-            }
 
             // ── Execução de comandos normais ──
 
@@ -195,6 +222,151 @@ namespace C3DDeepSeek
                 result.Success = false;
                 result.Output = $"❌ Erro na operação: {ex.Message}";
             }
+            return result;
+        }
+
+        /// <summary>
+        /// Cálculos de engenharia: hidráulica, pavimento, terraplenagem
+        /// </summary>
+        private static ExecutionResult ExecuteCalculation(string command)
+        {
+            var result = new ExecutionResult();
+            try
+            {
+                var calcResult = C3DCalculations.Execute(command);
+                result.Success = calcResult.Success;
+                result.Output = calcResult.Result;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Output = $"❌ Erro no cálculo: {ex.Message}";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Workflow guiado: rodovia, loteamento, terraplenagem, etc.
+        /// </summary>
+        private static ExecutionResult ExecuteWorkflow(string command)
+        {
+            var result = new ExecutionResult();
+            try
+            {
+                var parts = command.Split(':');
+                if (parts.Length < 2)
+                {
+                    result.Output = "❌ Formato: WORKFLOW:RODOVIA|LOTEAMENTO|TERRAPLENAGEM|DRENAGEM|SINALIZACAO|CORREDOR|SECOES";
+                    return result;
+                }
+                var wfType = parts[1].Trim().ToUpper();
+                result.Output = WorkflowEngine.ExecuteWorkflow(wfType);
+                result.Success = true;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Output = $"❌ Erro no workflow: {ex.Message}";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Importação de dados: CSV, LandXML, SHP, KML, IFC
+        /// </summary>
+        private static ExecutionResult ExecuteImport(string command)
+        {
+            var result = new ExecutionResult();
+            try
+            {
+                // Formato: IMPORT:CSV|caminho ou IMPORT:arquivo.ext
+                var parts = command.Split(':', 3);
+                if (parts.Length < 3)
+                {
+                    result.Output = "❌ Formato: IMPORT:caminho\\arquivo.ext";
+                    return result;
+                }
+                var filePath = parts[2].Trim();
+                result.Output = DataImporter.SmartImport(filePath);
+                result.Success = true;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Output = $"❌ Erro na importação: {ex.Message}";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Exportação Excel
+        /// </summary>
+        private static ExecutionResult ExecuteExport(string command)
+        {
+            var result = new ExecutionResult();
+            try
+            {
+                result.Output = ExcelExporter.ExportFullReport();
+                result.Success = true;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Output = $"❌ Erro na exportação: {ex.Message}";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Análise crítica do projeto
+        /// </summary>
+        private static ExecutionResult ExecuteAnalyze(string command)
+        {
+            var result = new ExecutionResult();
+            try
+            {
+                var analysis = ProjectAnalyzer.AnalyzeCurrentProject();
+                result.Output = analysis.Report;
+                result.Success = analysis.Success;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Output = $"❌ Erro na análise: {ex.Message}";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Comparação entre projetos
+        /// </summary>
+        private static ExecutionResult ExecuteCompare(string command)
+        {
+            var result = new ExecutionResult();
+            try
+            {
+                var analysis = ProjectAnalyzer.CompareProjects();
+                result.Output = analysis.Report;
+                result.Success = analysis.Success;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Output = $"❌ Erro na comparação: {ex.Message}";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Geração de código (LISP, C#)
+        /// </summary>
+        private static ExecutionResult ExecuteCodeGen(string command)
+        {
+            var result = new ExecutionResult();
+            result.Output = "📝 Modo geração de código ativado.\n" +
+                           "O DeepSeek gerará código LISP ou .NET no texto da resposta.\n" +
+                           "Copie o código gerado e cole no AutoCAD (LISP) ou compile (C#).";
+            result.Success = true;
             return result;
         }
 

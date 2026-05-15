@@ -58,6 +58,13 @@ echo         ^<Command Global="CONFIGDS" Local="CONFIGDS" /^>
 echo         ^<Command Global="DSREPORT" Local="DSREPORT" /^>
 echo         ^<Command Global="DSANALYZE" Local="DSANALYZE" /^>
 echo         ^<Command Global="DSMODEL" Local="DSMODEL" /^>
+echo         ^<Command Global="DSCHECK" Local="DSCHECK" /^>
+echo         ^<Command Global="DSCOMPARE" Local="DSCOMPARE" /^>
+echo         ^<Command Global="DSWORKFLOW" Local="DSWORKFLOW" /^>
+echo         ^<Command Global="DSCALC" Local="DSCALC" /^>
+echo         ^<Command Global="DSIMPORT" Local="DSIMPORT" /^>
+echo         ^<Command Global="DSEXPORT" Local="DSEXPORT" /^>
+echo         ^<Command Global="DSCODE" Local="DSCODE" /^>
 echo       ^</Commands^>
 echo     ^</ComponentEntry^>
 echo   ^</Components^>

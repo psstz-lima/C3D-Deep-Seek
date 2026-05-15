@@ -28,6 +28,13 @@
         <Command Global="DSREPORT" Local="DSREPORT" />
         <Command Global="DSANALYZE" Local="DSANALYZE" />
         <Command Global="DSMODEL" Local="DSMODEL" />
+        <Command Global="DSCHECK" Local="DSCHECK" />
+        <Command Global="DSCOMPARE" Local="DSCOMPARE" />
+        <Command Global="DSWORKFLOW" Local="DSWORKFLOW" />
+        <Command Global="DSCALC" Local="DSCALC" />
+        <Command Global="DSIMPORT" Local="DSIMPORT" />
+        <Command Global="DSEXPORT" Local="DSEXPORT" />
+        <Command Global="DSCODE" Local="DSCODE" />
       </Commands>
     </ComponentEntry>
   </Components>
