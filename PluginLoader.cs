@@ -967,6 +967,156 @@ namespace C3DDeepSeek
         }
 
         /// <summary>
+        /// COMANDO: DSDRAINAGE
+        /// Projetista de drenagem inteligente com bacias automáticas
+        /// </summary>
+        [CommandMethod("DSDRAINAGE", CommandFlags.Modal)]
+        public void DrainageDesign()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🌊 DSDRAINAGE — Drenagem Inteligente");
+            ed.WriteMessage("\n[1] A partir de CORREDOR");
+            ed.WriteMessage("\n[2] A partir de SUPERFÍCIE");
+            ed.WriteMessage("\n[3] Detectar pontos baixos");
+
+            var result = ed.GetString("\nOpção [1-3]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            var config = new DrainageDesigner.DrainageConfig();
+
+            string output;
+            switch (result.StringResult.Trim())
+            {
+                case "1":
+                    var corr = ed.GetString("\nNome do corredor: ");
+                    if (corr.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+                    config.CorridorName = corr.StringResult.Trim();
+
+                    var surf1 = ed.GetString("\nSuperfície base: ");
+                    config.SurfaceName = surf1.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK
+                        ? surf1.StringResult.Trim() : "";
+
+                    var align1 = ed.GetString("\nAlinhamento (opcional): ");
+                    config.AlignmentName = align1.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK
+                        ? align1.StringResult.Trim() : "";
+
+                    output = DrainageDesigner.CreateFromCorridor(config);
+                    break;
+                case "2":
+                    var surf2 = ed.GetString("\nNome da superfície: ");
+                    if (surf2.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+                    config.SurfaceName = surf2.StringResult.Trim();
+                    output = DrainageDesigner.CreateFromSurface(config);
+                    break;
+                case "3":
+                    var surf3 = ed.GetString("\nNome da superfície: ");
+                    if (surf3.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+                    output = DrainageDesigner.DetectLowPoints(surf3.StringResult.Trim());
+                    break;
+                default:
+                    output = "⚠️ Opção inválida.";
+                    break;
+            }
+
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSGOOGLEMAPS
+        /// Importa pontos do Google Maps/Earth como COGO points
+        /// </summary>
+        [CommandMethod("DSGOOGLEMAPS", CommandFlags.Modal)]
+        public void ImportFromGoogleMaps()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🌍 DSGOOGLEMAPS — Importar Pontos do Google Maps/Earth");
+            ed.WriteMessage("\n───────────────────────────────────────────");
+            ed.WriteMessage("\nFormatos suportados: KML, KMZ (Google Earth), CSV, GPX");
+
+            ed.WriteMessage("\n🔹 Exporte do Google My Maps como KML");
+            ed.WriteMessage("\n🔹 Exporte do Google Earth como KML/KMZ");
+            ed.WriteMessage("\n🔹 Use CSV com coordenadas Lat,Lon,Elev");
+
+            var result = ed.GetString("\nCaminho do arquivo (ou ENTER para abrir diálogo): ");
+
+            string output;
+            if (result.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                !string.IsNullOrWhiteSpace(result.StringResult))
+            {
+                string filePath = result.StringResult.Trim();
+                string ext = System.IO.Path.GetExtension(filePath).ToLower();
+
+                if (ext == ".kml" || ext == ".kmz")
+                    output = GoogleMapsImporter.ImportKmlPoints(filePath);
+                else if (ext == ".csv" || ext == ".txt")
+                {
+                    var geoResult = ed.GetString("\nCoordenadas geográficas (Lat/Lon)? [S/N]: ");
+                    bool isGeo = geoResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK &&
+                                 geoResult.StringResult.Trim().ToUpper() == "S";
+                    output = GoogleMapsImporter.ImportCsvAsCogo(filePath, isGeo);
+                }
+                else
+                    output = GoogleMapsImporter.SmartImport();
+            }
+            else
+            {
+                output = GoogleMapsImporter.SmartImport();
+            }
+
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
+        /// COMANDO: DSCONNECT
+        /// Conecta pontos COGO automaticamente com algoritmos inteligentes
+        /// </summary>
+        [CommandMethod("DSCONNECT", CommandFlags.Modal)]
+        public void ConnectPoints()
+        {
+            var doc = AcAp.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+
+            ed.WriteMessage("\n🔗 DSCONNECT — Conexão Inteligente de Pontos COGO");
+            ed.WriteMessage("\n───────────────────────────────────────────");
+            ed.WriteMessage("\n[1] Vizinho mais próximo (linhas)");
+            ed.WriteMessage("\n[2] Por elevação (talvegue/divisor)");
+            ed.WriteMessage("\n[3] Por numeração (sequência)");
+            ed.WriteMessage("\n[4] TIN edges (triangulação → polilinha)");
+
+            var result = ed.GetString("\nMétodo [1-4]: ");
+            if (result.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
+
+            PointConnector.ConnectMethod method;
+            switch (result.StringResult.Trim())
+            {
+                case "1": method = PointConnector.ConnectMethod.NearestNeighbor; break;
+                case "2": method = PointConnector.ConnectMethod.ByElevation; break;
+                case "3": method = PointConnector.ConnectMethod.BySequence; break;
+                case "4": method = PointConnector.ConnectMethod.TinEdges; break;
+                default: ed.WriteMessage("\n⚠️ Opção inválida."); return;
+            }
+
+            double maxDist = 50;
+            if (method == PointConnector.ConnectMethod.NearestNeighbor)
+            {
+                var distResult = ed.GetString("\nDistância máxima de conexão (m) [50]: ");
+                if (distResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    double.TryParse(distResult.StringResult.Replace(".", ","), out maxDist);
+            }
+
+            ed.WriteMessage("\n🔗 Conectando pontos...");
+            var output = PointConnector.AutoConnect("", method, maxDist);
+            ed.WriteMessage($"\n{output}");
+        }
+
+        /// <summary>
         /// COMANDO: DSCODE
         /// Gera código LISP ou .NET para tarefas personalizadas
         /// </summary>

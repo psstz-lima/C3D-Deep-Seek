@@ -46,6 +46,9 @@
         <Command Global="DSTEMPLATE" Local="DSTEMPLATE" />
         <Command Global="DSEARTH" Local="DSEARTH" />
         <Command Global="DSBRUCKNER" Local="DSBRUCKNER" />
+        <Command Global="DSDRAINAGE" Local="DSDRAINAGE" />
+        <Command Global="DSGOOGLEMAPS" Local="DSGOOGLEMAPS" />
+        <Command Global="DSCONNECT" Local="DSCONNECT" />
       </Commands>
     </ComponentEntry>
   </Components>
